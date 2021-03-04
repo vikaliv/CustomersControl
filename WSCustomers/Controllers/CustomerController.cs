@@ -7,7 +7,7 @@ using DL;
 using DTO;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using WSCustomers.Models;
+using WSCustomers;
 
 namespace WSCustomers.Controllers
 {
