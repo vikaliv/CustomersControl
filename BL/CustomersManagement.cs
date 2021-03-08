@@ -3,13 +3,18 @@ using DTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace BL
 {
     public static class CustomersManagement
     {
+        #region Public Methods
+
+        //public async static Task<List<DtoCustomer>> GetCustomers()
         public static List<DtoCustomer> GetCustomers()
         {
+
             List<DtoCustomer> customers = null;
             using (var context = new classicmodelsContext())
             {
@@ -36,12 +41,10 @@ namespace BL
                     TotalPayments = (from p in c.Payments select p.Amount).Sum()
 
             }).ToList();
-
-
             }
 
             return customers;
-        }
+        } 
 
         public static List<DtoOrder> GetCustomerOrders(int id)
         {
@@ -83,7 +86,7 @@ namespace BL
 
             try
             {
-
+               
                 int id = customer.CustomerNumber;
 
                 using (var context = new classicmodelsContext())
@@ -163,11 +166,42 @@ namespace BL
                                                 select od.PriceEach * od.QuantityOrdered).Sum(),
 
                                  TotalPayments = (from p in c.Payments select p.Amount).Sum()
-
                              }).ToList();
             }
 
             return customers;
         }
+
+        #endregion
+
+        #region Private Methods
+
+        private static DtoCustomer ConvertFrom(Customer c, classicmodelsContext context)
+        {
+            return new DtoCustomer()
+            {
+                CustomerNumber = c.CustomerNumber,
+                CustomerName = c.CustomerName,
+                ContactLastName = c.ContactLastName,
+                ContactFirstName = c.ContactFirstName,
+                Phone = c.Phone,
+                AddressLine1 = c.AddressLine1,
+                AddressLine2 = c.AddressLine2,
+                City = c.City,
+                State = c.State,
+                PostalCode = c.PostalCode,
+                Country = c.Country,
+                SalesRepEmployeeNumber = c.SalesRepEmployeeNumber,
+                CreditLimit = c.CreditLimit,
+                // I added this for deft checking
+                TotalPrices = (from o in c.Orders
+                               join od in context.Orderdetails on o.OrderNumber equals od.OrderNumber
+                               select od.PriceEach * od.QuantityOrdered).Sum(),
+
+                TotalPayments = (from p in c.Payments select p.Amount).Sum()
+            };
+        }
+
+        #endregion
     }
 }

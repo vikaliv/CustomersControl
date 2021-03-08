@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -15,6 +16,9 @@ namespace CustomersControl
 {
     public partial class Customers : Form
     {
+        //should be in config file
+        private const string URL = "http://localhost:5000/";
+
         public Customers()
         {
             InitializeComponent();
@@ -26,16 +30,25 @@ namespace CustomersControl
         {
             try
             {
-                List<DtoCustomer> customers = this.GetCustomers().Result;
-
-                this.setCustomers(customers);
+                Task.Run(() => this.GetCustomers()).ContinueWith(t => this.setCustomers(t.Result));
+                //Task.Factory.StartNew<List<DtoCustomer>>(
+                // () => this.LoadCustomers(),
+                //    CancellationToken.None,
+                //    TaskCreationOptions.None,
+                //    TaskScheduler.Default)
+                // .ContinueWith(x => this.setCustomers(x.Result),
+                //    CancellationToken.None,
+                //    TaskContinuationOptions.OnlyOnRanToCompletion,
+                //    TaskScheduler.Current);
+                ////var customers = Task.Run(() => this.GetCustomers().Result).Result;
+                //////taskCustomers.Wait();
+                ////this.setCustomers(customers);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-
-        }
+        }       
 
         private void btnGetOrders_Click(object sender, EventArgs e)
         {
@@ -48,12 +61,14 @@ namespace CustomersControl
                 }
                 int id = (int)this.dgvCustomers.SelectedRows[0].Cells["customernumber"].Value;
 
-                List<DtoOrder> orders = this.GetCustomerOrders(id).Result;
+                Task.Run(() => this.GetCustomerOrders(id));
 
-                var source = new BindingSource();
-                source.DataSource = orders;
+                //List<DtoOrder> orders = this.GetCustomerOrders(id).Result;
 
-                this.dgvOrders.DataSource = source;
+                //var source = new BindingSource();
+                //source.DataSource = orders;
+
+                //this.dgvOrders.DataSource = source;
             }
             catch (Exception ex)
             {
@@ -67,7 +82,8 @@ namespace CustomersControl
             {
                 int id = (int)this.dgvCustomers.SelectedRows[0].Cells["customernumber"].Value;
 
-                bool result = this.UpdateCustomer((DtoCustomer)this.dgvCustomers.SelectedRows[0].DataBoundItem).Result;
+                bool result = Task.Run(() => this.UpdateCustomer((DtoCustomer)this.dgvCustomers.SelectedRows[0].DataBoundItem)).Result;
+                //bool result = this.UpdateCustomer((DtoCustomer)this.dgvCustomers.SelectedRows[0].DataBoundItem).Result;
             }
             catch (Exception ex)
             {
@@ -79,9 +95,11 @@ namespace CustomersControl
         {
             try
             {
-                List<DtoCustomer> customers = this.GetRiskCustomers(this.numPercent.Value).Result;
+                Task.Run(() => this.GetRiskCustomers(this.numPercent.Value)).ContinueWith(t => this.setCustomers(t.Result));
 
-                this.setCustomers(customers);
+                //List<DtoCustomer> customers = this.GetRiskCustomers(this.numPercent.Value).Result;
+
+                //this.setCustomers(customers);
             }            
             catch(Exception ex)
             {
@@ -98,7 +116,15 @@ namespace CustomersControl
             var source = new BindingSource();
             source.DataSource = customers;
 
-            this.dgvCustomers.DataSource = source;
+            if (!this.dgvCustomers.InvokeRequired)
+            {
+                this.dgvCustomers.DataSource = source;
+
+            }
+            else
+            {
+                this.dgvCustomers.Invoke((Action)(() => this.dgvCustomers.DataSource = source));
+            }                
         }
 
         private async Task<List<DtoCustomer>> GetCustomers()
@@ -107,10 +133,10 @@ namespace CustomersControl
 
             using (var httpClient = new System.Net.Http.HttpClient())
             {
-                httpClient.BaseAddress = new Uri("http://localhost:5000/api/customer/");
+                httpClient.BaseAddress = new Uri(URL + "api/customer/");
                 httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-                var response = httpClient.GetAsync("getall").Result;
+                var response = await Task.FromResult(httpClient.GetAsync("getall").Result);
 
                 response.EnsureSuccessStatusCode();
 
@@ -123,26 +149,38 @@ namespace CustomersControl
             return results;
         }
 
-        private async Task<List<DtoOrder>> GetCustomerOrders(int id)
+        private async Task GetCustomerOrders(int id)
         {
-            List<DtoOrder> results = null;
+            //List<DtoOrder> results = null;
 
             using (var httpClient = new System.Net.Http.HttpClient())
             {
-                httpClient.BaseAddress = new Uri("http://localhost:5000/api/customer/");
+                httpClient.BaseAddress = new Uri(URL + "api/customer/");
                 httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-                var response = httpClient.GetAsync(id.ToString()).Result;
+                var response = await Task.FromResult(httpClient.GetAsync(id.ToString()).Result);
 
                 response.EnsureSuccessStatusCode();
 
                 if (response.IsSuccessStatusCode)
                 {
-                    results = await response.Content.ReadAsAsync<List<DtoOrder>>();
+                    await response.Content.ReadAsAsync<List<DtoOrder>>().ContinueWith(t =>
+                        {
+                            var source = new BindingSource();
+                            source.DataSource = t.Result;
+
+                            if (!this.dgvOrders.InvokeRequired)
+                            {
+                                this.dgvOrders.DataSource = source;
+
+                            }
+                            else
+                            {
+                                this.dgvOrders.Invoke((Action)(() => this.dgvOrders.DataSource = source));
+                            }
+                        });
                 }
             }
-
-            return results;
         }
 
         private async Task<bool> UpdateCustomer(DtoCustomer customer)
@@ -151,10 +189,10 @@ namespace CustomersControl
 
             using (var httpClient = new System.Net.Http.HttpClient())
             {
-                httpClient.BaseAddress = new Uri("http://localhost:5000/");
+                httpClient.BaseAddress = new Uri(URL);
                 httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-                var response = httpClient.PutAsJsonAsync("api/customer", customer).Result;
+                var response = await Task.FromResult(httpClient.PutAsJsonAsync("api/customer", customer).Result);
 
                 response.EnsureSuccessStatusCode();
 
@@ -173,10 +211,10 @@ namespace CustomersControl
 
             using (var httpClient = new System.Net.Http.HttpClient())
             {
-                httpClient.BaseAddress = new Uri("http://localhost:5000/");
+                httpClient.BaseAddress = new Uri(URL);
                 httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-                var response = httpClient.GetAsync("api/customer/getriskcustomers/" + numPercent.ToString()).Result;
+                var response = await Task.FromResult(httpClient.GetAsync("api/customer/getriskcustomers/" + numPercent.ToString()).Result);
 
                 response.EnsureSuccessStatusCode();
 

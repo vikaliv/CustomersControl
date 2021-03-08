@@ -7,7 +7,6 @@ using DL;
 using DTO;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using WSCustomers;
 
 namespace WSCustomers.Controllers
 {
@@ -20,7 +19,7 @@ namespace WSCustomers.Controllers
         {
             try
             {
-                var customers = BL.CustomersManagement.GetCustomers();
+                var customers = await Task.FromResult(BL.CustomersManagement.GetCustomers());//4 sec
                
                 return Ok(customers);
             }
@@ -36,7 +35,7 @@ namespace WSCustomers.Controllers
         {
             try
             {
-                var customers = BL.CustomersManagement.GetCustomerOrders(id);
+                var customers = await Task.FromResult(BL.CustomersManagement.GetCustomerOrders(id));
 
                 return Ok(customers);
             }
@@ -53,7 +52,7 @@ namespace WSCustomers.Controllers
         {
             try
             {
-                var customers = BL.CustomersManagement.GetRiskCustomerts(x);
+                var customers = await Task.FromResult(BL.CustomersManagement.GetRiskCustomerts(x));
 
                 return Ok(customers);
             }
@@ -69,7 +68,7 @@ namespace WSCustomers.Controllers
         {
             try
             {
-                var result = BL.CustomersManagement.Update(customer);
+                var result = await Task.FromResult(BL.CustomersManagement.Update(customer));
 
                 switch (result)
                 {
